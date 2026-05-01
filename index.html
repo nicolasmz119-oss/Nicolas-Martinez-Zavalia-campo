@@ -589,14 +589,14 @@ tr:hover td{background:var(--acl);}
         </select>
       </div>
       <div class="fgrp full" id="gst-maq-wrap">
-        <label>Maquina/s <span style="font-size:11px;color:var(--mu)">(Ctrl+click para varias, o elegí "Todo el parque")</span></label>
-        <div style="display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap">
-          <button type="button" class="btn btn-s btn-sm" onclick="selAllMaq()">Todo el parque</button>
-          <button type="button" class="btn btn-s btn-sm" onclick="selNoneMaq()">Ninguna</button>
+        <label>Maquina/s</label>
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+          <button type="button" class="btn btn-s btn-sm" onclick="selAllMaq()">&#x2714; Todo el parque</button>
+          <button type="button" class="btn btn-s btn-sm" onclick="selNoneMaq()">&#x2715; Ninguna</button>
           <button type="button" class="btn btn-s btn-sm" onclick="selTipoMaq('Tractor')">Solo tractores</button>
         </div>
-        <select id="gst-maq-sel" multiple size="6" style="height:auto;width:100%"></select>
-        <p style="font-size:11px;color:var(--mu);margin-top:4px">Si elegís varias, el monto se divide en partes iguales entre cada una.</p>
+        <div id="gst-maq-checks" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:10px"></div>
+        <p style="font-size:11px;color:var(--mu);margin-top:6px">Si elegís varias, el monto se divide en partes iguales.</p>
       </div>
       <div class="fgrp"><label>Asignar a servicio</label>
         <select id="gst-asig">
@@ -3447,19 +3447,16 @@ var gstFilter = "all";
 
 
 function selAllMaq(){
-  var sel=document.getElementById("gst-maq-sel"); if(!sel) return;
-  Array.from(sel.options).forEach(function(o){o.selected=true;});
+  document.querySelectorAll(".gst-maq-cb").forEach(function(cb){cb.checked=true;});
 }
 function selNoneMaq(){
-  var sel=document.getElementById("gst-maq-sel"); if(!sel) return;
-  Array.from(sel.options).forEach(function(o){o.selected=false;});
+  document.querySelectorAll(".gst-maq-cb").forEach(function(cb){cb.checked=false;});
 }
 function selTipoMaq(tipo){
-  var sel=document.getElementById("gst-maq-sel"); if(!sel) return;
-  Array.from(sel.options).forEach(function(o){o.selected=false;});
+  selNoneMaq();
   PARQUE.filter(function(m){return m.tipo===tipo;}).forEach(function(m){
-    var opt=sel.querySelector("option[value='"+m.id+"']");
-    if(opt) opt.selected=true;
+    var cb=document.querySelector(".gst-maq-cb[value='"+m.id+"']");
+    if(cb) cb.checked=true;
   });
 }
 
@@ -3488,8 +3485,7 @@ function saveGasto(){
   var ho=document.getElementById("gst-ho")?document.getElementById("gst-ho").value||"":"";
   var pr=document.getElementById("gst-pr")?document.getElementById("gst-pr").value||"":"";
   var isMant=MANT_CATS.indexOf(tipo)>=0;
-  var maqEl=document.getElementById("gst-maq-sel");
-  var selectedMaqs=maqEl?Array.from(maqEl.selectedOptions):[];
+  var selectedMaqs=Array.from(document.querySelectorAll(".gst-maq-cb:checked")).map(function(cb){return {value:cb.value};});
   var asigEl=document.getElementById("gst-asig");
   if(!S.gastos) S.gastos=[];
   var maqList=isMant&&selectedMaqs.length>0?selectedMaqs:[];
@@ -3874,24 +3870,33 @@ function init(){
   // Gas maq select change
   var gasMaqSel=document.getElementById("gas-maq");
   if(gasMaqSel) gasMaqSel.addEventListener("change", onGasMaqChange);
-  // Gastos maq select — ALL parque
-  var gstMaqSel=document.getElementById("gst-maq-sel");
-  if(gstMaqSel){
-    gstMaqSel.innerHTML="";
-    // Group by tipo
+  // Gastos maq checkboxes — ALL parque
+  var gstChecks=document.getElementById("gst-maq-checks");
+  if(gstChecks){
+    gstChecks.innerHTML="";
     var tipos=["Tractor","Cosechadora","Cargadora","Sembradora","Rastra","Desmalezadora","Tolva","Casilla","Camioneta"];
     tipos.forEach(function(tipo){
       var items=PARQUE.filter(function(m){return m.tipo===tipo;});
       if(!items.length) return;
-      var grp=document.createElement("optgroup");
-      grp.label=tipo+"s";
+      // Tipo header
+      var hdr=document.createElement("div");
+      hdr.style.cssText="grid-column:1/-1;font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin-top:4px;padding-top:6px;border-top:1px solid var(--bd)";
+      hdr.textContent=tipo+"s";
+      gstChecks.appendChild(hdr);
       items.forEach(function(m){
-        var o=document.createElement("option");
-        o.value=m.id;
-        o.textContent=maqLabel(m);
-        grp.appendChild(o);
+        var lbl=document.createElement("label");
+        lbl.style.cssText="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;padding:4px 6px;border-radius:5px;transition:background .1s";
+        lbl.onmouseover=function(){this.style.background="var(--bbd)";};
+        lbl.onmouseout=function(){this.style.background="";};
+        var cb=document.createElement("input");
+        cb.type="checkbox";
+        cb.value=m.id;
+        cb.className="gst-maq-cb";
+        cb.style.cssText="width:16px;height:16px;accent-color:var(--ac);cursor:pointer;flex-shrink:0";
+        lbl.appendChild(cb);
+        lbl.appendChild(document.createTextNode(maqLabel(m)));
+        gstChecks.appendChild(lbl);
       });
-      gstMaqSel.appendChild(grp);
     });
   }
   // Init gastos form
